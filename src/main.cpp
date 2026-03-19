@@ -2,7 +2,8 @@
 
 // pes board pin map
 #include "PESBoardPinMap.h"
-
+#include "DCMotor.h"
+#include "Encoder.h"
 // drivers
 #include "DebounceIn.h"
 
@@ -38,6 +39,20 @@ int main()
     DigitalOut led1(PB_9);
 
     // --- adding variables and objects and applying functions starts here ---
+    // create object to enable power electronics for the DC motors
+    DigitalOut enable_motors(PB_ENABLE_DCMOTORS);
+    const float voltage_max = 12.0f; // maximum voltage of battery packs, adjust this to
+                                 // 6.0f V if you only use one battery pack
+
+    // motor M1
+    const float gear_ratio_M1 = 448.0f; // gear ratio
+    const float kn_M1 = 28.0f / 12.0f;  // motor constant [rpm/V]
+    // it is assumed that only one motor is available, therefore
+    // we use the pins from M1, so you can leave it connected to M1
+    DCMotor motor_M1(PB_PWM_M1, PB_ENC_A_M1, PB_ENC_B_M1, gear_ratio_M1, kn_M1, voltage_max);
+    // limit max. velocity to half physical possible velocity
+    motor_M1.setMaxVelocity(motor_M1.getMaxPhysicalVelocity() * 0.5f);
+    motor_M1.enableMotionPlanner();
 
     // start timer
     main_task_timer.start();
@@ -51,6 +66,12 @@ int main()
         if (do_execute_main_task) {
 
             // --- code that runs when the blue button was pressed goes here ---
+            if (enable_motors == 0)
+                enable_motors = 1;
+
+            motor_M1.setVelocity(motor_M1.getMaxVelocity() * 0.5f);
+            // print to the serial terminal
+            printf("Motor velocity: %f \n", motor_M1.getVelocity());
 
             // visual feedback that the main task is executed, setting this once would actually be enough
             led1 = 1;
